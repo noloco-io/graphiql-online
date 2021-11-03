@@ -1,11 +1,10 @@
 {
   "name": "any-graphiql",
   "version": "1.0.0",
-  "description": "GraphiQL Online",
+  "description": "Noloco GraphiQL Online",
   "main": "index.html",
-  "repository": "https://github.com/lucasconstantino/graphiql-online",
-  "author": "Lucas Constantino Silva <lucasconstantinosilva@gmail.com>",
-  "license": "MIT",
+  "repository": "https://github.com/noloco-io/graphiql-online",
+  "author": "Noloco <team@noloco.io>",
   "scripts": {
     "clean": "rm -Rf ./dist",
     "build": "webpack",

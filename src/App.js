@@ -1,16 +1,15 @@
 import React from 'react'
 import GraphiQL from 'graphiql'
 import fetch from 'isomorphic-fetch'
-import { isUri } from 'valid-url'
 
 const options = { method: 'post', headers: { 'Content-Type': 'application/json' } }
-const endpoint = 'https://countries.trevorblades.com/' // Initial
+const ENDPOINT = 'https://countries.trevorblades.com/' // Initial
 
 const defaultQuery = `
-# Welcome to GraphiQL
+# Welcome to Noloco GraphiQL
 #
-# GraphiQL is an in-browser tool for writing, validating, and
-# testing GraphQL queries.
+# Noloco GraphiQL is an in-browser tool for writing, validating, and
+# testing Noloco queries.
 #
 # Type queries into this side of the screen, and you will see intelligent
 # typeaheads aware of the current GraphQL type schema and live syntax and
@@ -21,9 +20,15 @@ const defaultQuery = `
 #
 # An example GraphQL query might look like:
 #
-#     {
-#       field(arg: "value") {
-#         subField
+#     query userCollection{
+#       userCollection {
+#         totalCount
+#         edges {
+#           node {
+#             id
+#             email
+#           }
+#         }
 #       }
 #     }
 #
@@ -34,12 +39,17 @@ const defaultQuery = `
 #   Auto Complete:  Ctrl-Space (or just start typing)
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# Default endpoint is an instance of https://www.graph.cool/
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-query {
-  countries {
-    name
+query userCollection{
+  userCollection {
+    totalCount
+    edges {
+      node {
+        id
+        email
+      }
+    }
   }
 }
 `
@@ -48,40 +58,61 @@ export default class App extends React.Component {
   constructor (props) {
     super(props)
 
+    const projectName = document.location.hash.replace('#', '')
+    let endpoint = ENDPOINT
+
+    if (projectName) {
+      endpoint = `https://api.portals.noloco.io/data/${projectName}`
+    } else {
+      this.askForProjectName()
+    }
+
     this.state = {
+      apiKey: window.localStorage.getItem('graphiql:key') || '',
+      projectName,
       defaultQuery,
       endpoint,
       fetcher: this.createFetcher(endpoint)
     }
+
+    this.chooseApiKey = this.chooseApiKey.bind(this)
+  }
+
+  askForProjectName = () => {
+    const projectName = window.prompt('Please enter your project name')
+    document.location = `${document.location.href}#${projectName}`
+    document.location.reload()
   }
 
   /**
   * GraphiQL fetcher factory.
   */
-  createFetcher = endpoint => param => fetch(endpoint, { ...options, body: JSON.stringify(param) })
+  createFetcher = endpoint => param => fetch(endpoint, { ...options, headers: { ...options.headers, Authorization: `Bearer ${this.state.apiKey}` }, body: JSON.stringify(param) })
     .then(response => response.json())
 
   /**
    * Change endpoint and fetcher.
    */
-  changeEndpoint = endpoint => this.setState({
-    endpoint,
-    fetcher: this.createFetcher(endpoint)
-  })
+  changeApiKey = apiKey => {
+    window.localStorage.setItem('graphiql:key', apiKey)
+    this.setState({
+      apiKey,
+    })
+  }
 
   /**
    * validate end change endpoint, but only when new one is valid url.
    */
-  validateAndChangeEndpoint = endpoint => isUri(endpoint)
-    ? this.changeEndpoint(endpoint)
-    : (window.alert('Invalid url'), this.chooseEndpoint())
+  validateAndChangeEndpoint = endpoint => this.changeApiKey(endpoint);
 
   /**
-   * Promp user for new endpoint.
+   * Promp user for new api key.
    */
-  chooseEndpoint = () => this.validateAndChangeEndpoint(
-    window.prompt('Choose the new endpoint', this.state.endpoint)
-  )
+  chooseApiKey () {
+    this.validateAndChangeEndpoint(
+      window.prompt(`Enter your Portal API Key from https://${this.state.projectName}.noloco.co/_/settings/integrations`, this.state.apiKey)
+    )
+  }
 
   setRef = c => (this.graphiql = c)
 
@@ -94,16 +125,16 @@ export default class App extends React.Component {
           defaultQuery={ this.state.defaultQuery }
         >
           <GraphiQL.Logo>
-            <a href='https://github.com/lucasconstantino/graphiql-online' title='See GraphiQL Online on GitHub'>
-              <svg aria-hidden='true' className='octicon octicon-mark-github' height='32' version='1.1' viewBox='0 0 16 16' width='32'><path fillRule='evenodd' d='M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z' /></svg>
+            <a href='https://noloco.io' title='See noloco'>
+              <img src="https://uploads-ssl.webflow.com/6145a64d8a08a13f1a8040f7/614819338a8b0442c6ab2572_infinity%20black%402x.png" height="32" alt="Noloco Logo"/>
             </a>
           </GraphiQL.Logo>
 
           <GraphiQL.Toolbar>
             <GraphiQL.Button
-              label='Change endpoint'
-              title='Change endpoint'
-              onClick={ this.chooseEndpoint }
+              label='Change API token'
+              title='Change API token'
+              onClick={ this.chooseApiKey }
             />
             <span>Endpoint: <strong>{ this.state.endpoint }</strong></span>
           </GraphiQL.Toolbar>
