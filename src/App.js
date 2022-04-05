@@ -5,6 +5,38 @@ import fetch from 'isomorphic-fetch'
 const options = { method: 'post', headers: { 'Content-Type': 'application/json' } }
 const ENDPOINT = 'https://countries.trevorblades.com/' // Initial
 
+// Copies a string to the clipboard. Must be called from within an
+// event handler such as click. May return false if it failed, but
+// this is not always possible. Browser support for Chrome 43+,
+// Firefox 42+, Safari 10+, Edge and Internet Explorer 10+.
+// Internet Explorer: The clipboard feature may be disabled by
+// an administrator. By default a prompt is shown the first
+// time the clipboard is used (per session).
+const copyToClipboard = (text) => {
+  if (window.clipboardData && window.clipboardData.setData) {
+      // Internet Explorer-specific code path to prevent textarea being shown while dialog is visible.
+    return window.clipboardData.setData("Text", text)
+
+  }
+  else if (document.queryCommandSupported && document.queryCommandSupported("copy")) {
+    const textarea = document.createElement("textarea")
+    textarea.textContent = text
+    textarea.style.position = "fixed"  // Prevent scrolling to bottom of page in Microsoft Edge.
+    document.body.appendChild(textarea)
+    textarea.select()
+    try {
+        return document.execCommand("copy")  // Security exception may be thrown by some browsers.
+    }
+    catch (ex) {
+        console.warn("Copy to clipboard failed.", ex)
+        return prompt("Copy to clipboard: Ctrl+C, Enter", text)
+    }
+    finally {
+        document.body.removeChild(textarea)
+    }
+  }
+}
+
 const defaultQuery = `
 # Welcome to Noloco GraphiQL
 #
@@ -103,7 +135,7 @@ export default class App extends React.Component {
   /**
    * validate end change endpoint, but only when new one is valid url.
    */
-  validateAndChangeEndpoint = endpoint => this.changeApiKey(endpoint);
+  validateAndChangeEndpoint = endpoint => this.changeApiKey(endpoint)
 
   /**
    * Promp user for new api key.
@@ -112,6 +144,17 @@ export default class App extends React.Component {
     this.validateAndChangeEndpoint(
       window.prompt(`Enter your Portal API Key from https://${this.state.projectName}.noloco.co/_/settings/integrations`, this.state.apiKey)
     )
+  }
+
+  copyRequest () {
+    const { query, variables } = this.graphiql.state
+    const queryObject = {
+      variables: JSON.parse(variables || {}),
+      query: query.replace(/\n/g, '  '),
+    }
+    const queryString = JSON.stringify(queryObject, undefined, 2)
+    console.log(queryString)
+    copyToClipboard(queryString)
   }
 
   setRef = c => (this.graphiql = c)
@@ -136,7 +179,12 @@ export default class App extends React.Component {
               title='Change API token'
               onClick={ this.chooseApiKey }
             />
-            <span>Endpoint: <strong>{ this.state.endpoint }</strong></span>
+            <GraphiQL.Button
+              label='Copy to clipboard'
+              title='Copy to clipboard'
+              onClick={ () => this.copyRequest() }
+            />
+            <span className="endpoint">URL: <strong>{ this.state.endpoint }</strong></span>
           </GraphiQL.Toolbar>
         </GraphiQL>
       </div>
